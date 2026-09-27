@@ -12,10 +12,23 @@ class SearchDealsController extends GetxController {
   final results = <DealModel>[].obs;
   final isLoading = false.obs;
   final hasSearched = false.obs;
+  final query = ''.obs;
 
-  void onQueryChanged(String query) {
-    _search(query);
-  }
+  @override
+
+  void onInit() {
+    super.onInit();
+
+  debounce(
+  query,
+  (value) => _search(value),
+      time: const Duration(milliseconds: 500),
+    );
+   }
+
+  void onQueryChanged(String value) {
+  query.value = value;
+  }  
 
   Future<void> _search(String query) async {
     if (query.trim().isEmpty) {
