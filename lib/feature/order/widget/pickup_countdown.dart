@@ -15,14 +15,24 @@ class PickupCountdown extends StatefulWidget {
 }
 
 class _PickupCountdownState extends State<PickupCountdown> {
+
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
-    Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {});
     });
+
+    
   }
 
+@override
+void dispose() {
+  _timer?.cancel();
+  super.dispose();
+}
   @override
   Widget build(BuildContext context) {
     final remaining = widget.pickupStart.difference(DateTime.now());
