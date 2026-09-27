@@ -20,11 +20,9 @@ class HomeController extends GetxController {
   final scrollController = ScrollController();
   final refreshController = RefreshController();
 
-  int _epoch = 0;
   int _page = 1;
   int _totalPages = 1;
   bool _isFetchingMore = false;
-  bool _isRefreshing = false;
 
   bool get hasMore => _page < _totalPages;
 
@@ -58,52 +56,31 @@ class HomeController extends GetxController {
   }
 
   Future<void> refreshDeals() async {
-    // Requests from previous refreshes no longer own the feed or loading state.
-    final epoch = ++_epoch;
-    _isRefreshing = true;
-    _isFetchingMore = false;
-    try {
-      final res = await dealRepo.fetchDeals(page: 1);
-      if (epoch != _epoch) return;
-      _page = res.page;
-      _totalPages = res.totalPages;
-      deals.assignAll(res.items);
-      refreshController.refreshCompleted(resetFooterState: true);
-    } catch (e) {
-      if (epoch != _epoch) return;
-      LogService.error('refreshDeals failed', e);
-      refreshController.refreshFailed();
-    } finally {
-      if (epoch == _epoch) {
-        _isRefreshing = false;
-        refreshController.loadComplete();
-      }
-    }
+    _page = 1;
+    final res = await dealRepo.fetchDeals(page: 1);
+    _totalPages = res.totalPages;
+    deals.assignAll(res.items);
+    refreshController.refreshCompleted();
   }
 
   Future<void> loadMore() async {
-    if (_isRefreshing || _isFetchingMore) return;
+    if (_isFetchingMore) return;
     if (!hasMore) {
       refreshController.loadNoData();
       return;
     }
     _isFetchingMore = true;
-    final epoch = _epoch;
-    final nextPage = _page + 1;
+    _page++;
     try {
-      final res = await dealRepo.fetchDeals(page: nextPage);
-      if (epoch != _epoch) return;
-      _page = res.page;
+      final res = await dealRepo.fetchDeals(page: _page);
       _totalPages = res.totalPages;
       deals.addAll(res.items);
-      refreshController.loadComplete();
     } catch (e) {
-      if (epoch != _epoch) return;
       LogService.error('loadMore failed', e);
-      refreshController.loadFailed();
-    } finally {
-      if (epoch == _epoch) _isFetchingMore = false;
+      _page--;
     }
+    _isFetchingMore = false;
+    refreshController.loadComplete();
   }
 
   void scrollToTop() {
@@ -113,7 +90,6 @@ class HomeController extends GetxController {
 
   @override
   void onClose() {
-    _epoch++;
     scrollController.dispose();
     refreshController.dispose();
     super.onClose();
