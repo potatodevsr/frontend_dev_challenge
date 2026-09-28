@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../../app_config.dart';
 import '../../model/deal_model.dart';
 import '../../routes/routes.dart';
+import '../../service/flash_sale_clock.dart';
+import 'flash_sale_countdown.dart';
 import 'the_network_image.dart';
 
 /// Deal card used in the home feed and search results.
@@ -15,35 +17,55 @@ class DealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return FlashSaleAvailability(
+      endsAt: deal.flashSaleEndsAt,
+      builder: (context, expired) => Opacity(
+        opacity: expired ? 0.55 : 1,
+        child: _buildCard(context, expired),
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, bool expired) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
       elevation: 0.5,
       child: InkWell(
-        onTap: () => Get.toNamed(
-          Routes.dealRoute(deal.id, source: source),
-          arguments: deal,
-        ),
+        onTap: expired
+            ? null
+            : () {
+                if (Get.find<FlashSaleClock>()
+                    .isExpired(deal.flashSaleEndsAt)) {
+                  return;
+                }
+                Get.toNamed(
+                  Routes.dealRoute(deal.id, source: source),
+                  arguments: deal,
+                );
+              },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
-                TheNetworkImage(url: deal.imageUrl, height: 160, width: double.infinity),
+                TheNetworkImage(
+                    url: deal.imageUrl, height: 160, width: double.infinity),
                 if (deal.isFlashSale)
                   Positioned(
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.red.shade600,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'FLASH SALE',
-                        style: TextStyle(
+                      child: FlashSaleCountdown(
+                        endsAt: deal.flashSaleEndsAt!,
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.bold),
@@ -54,7 +76,8 @@ class DealCard extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(6),

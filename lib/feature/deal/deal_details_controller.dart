@@ -117,7 +117,7 @@ class DealDetailsController extends GetxController {
     final currentDeal = deal.value;
     if (currentDeal == null || isClosed) return;
 
-    cartService.add(currentDeal);
+    if (!cartService.add(currentDeal)) return;
 
     Get.snackbar(
       'Added to bag',

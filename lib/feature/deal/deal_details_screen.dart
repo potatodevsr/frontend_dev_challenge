@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../app_config.dart';
 import '../shared_widget/the_network_image.dart';
+import '../shared_widget/flash_sale_countdown.dart';
 import 'deal_details_controller.dart';
 import '../../model/deal_model.dart';
 
@@ -73,13 +74,24 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                   Text(deal.name,
                       style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.bold)),
+                  if (deal.flashSaleEndsAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: FlashSaleCountdown(
+                        endsAt: deal.flashSaleEndsAt!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   Text(deal.storeName,
-                      style: TextStyle(
-                          fontSize: 15, color: Colors.grey.shade700)),
+                      style:
+                          TextStyle(fontSize: 15, color: Colors.grey.shade700)),
                   Text(deal.storeAddress,
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade500)),
+                      style:
+                          TextStyle(fontSize: 13, color: Colors.grey.shade500)),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -98,7 +110,8 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                       Obx(() => Chip(
                             avatar: const Icon(Icons.inventory_2_outlined,
                                 size: 16),
-                            label: Text('${controller.quantityLeft ?? '-'} left'),
+                            label:
+                                Text('${controller.quantityLeft ?? '-'} left'),
                           )),
                     ],
                   ),
@@ -140,8 +153,8 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                   ),
                   const SizedBox(height: 16),
                   const Text('What you get',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Text(deal.description,
                       style: TextStyle(
@@ -172,14 +185,16 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
         color: Colors.white,
         child: SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: controller.addToCart,
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('Add to bag'),
+          child: FlashSaleAvailability(
+            endsAt: deal.flashSaleEndsAt,
+            builder: (context, expired) => FilledButton.icon(
+              onPressed: expired ? null : controller.addToCart,
+              icon: const Icon(Icons.add_shopping_cart),
+              label: Text(expired ? 'Expired' : 'Add to bag'),
+            ),
           ),
         ),
       ),
     );
   }
 }
-
