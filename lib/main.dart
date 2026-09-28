@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import 'app_config.dart';
 import 'repository/deal_repo.dart';
@@ -13,13 +14,16 @@ import 'service/flash_sale_clock.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Observe every rendered visibility change, including brief dips below 50%.
+  // Callbacks only manage dwell timers; they never rebuild cards.
+  VisibilityDetectorController.instance.updateInterval = Duration.zero;
   await initDependencies();
   runApp(const RescuApp());
 }
 
 Future<void> initDependencies() async {
   await Get.putAsync(() => FakeApiService().init(), permanent: true);
-  Get.put(AnalyticsService(), permanent: true);
+  Get.put(AnalyticsService(api: Get.find()), permanent: true);
   final flashClock = Get.put(FlashSaleClock(), permanent: true);
   Get.put(CartService(clock: flashClock), permanent: true);
   Get.lazyPut(() => DealRepo(api: Get.find()), fenix: true);
@@ -38,6 +42,7 @@ class RescuApp extends StatelessWidget {
       theme: AppConfig.theme,
       initialRoute: Routes.home,
       getPages: Routes.pages,
+      navigatorObservers: [Get.find<AnalyticsService>().routeObserver],
     );
   }
 }

@@ -95,7 +95,13 @@ class HomeScreen extends GetView<HomeController> {
                       ),
                     ),
                     ...controller.visibleDeals
-                        .map((deal) => DealCard(deal: deal)),
+                        .asMap()
+                        .entries
+                        .map((entry) => DealCard(
+                              key: ValueKey(entry.value.id),
+                              deal: entry.value,
+                              position: entry.key,
+                            )),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -129,9 +135,8 @@ class HomeScreen extends GetView<HomeController> {
               final uri = Uri.tryParse(textController.text.trim());
               Get.back();
               if (uri == null) return;
-              final route = uri.hasQuery
-                  ? '${uri.path}?${uri.query}'
-                  : uri.path;
+              final route =
+                  uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
               Get.toNamed(route);
             },
             child: const Text('Open'),

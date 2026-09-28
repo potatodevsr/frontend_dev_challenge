@@ -97,9 +97,82 @@ record idle ticks and scrolling separately, enable widget-build tracking, and
 confirm that only countdown text builds each second. Record actual timings
 and memory rather than extrapolating them from these widget tests.
 
+## F-2 — Impression tracking
+
+### Implementation and decisions
+
+One shared `DealImpression` widget measures each card's content surface,
+excluding its outside margin, using the installed `visibility_detector`.
+It starts a one-second, one-shot dwell timer at 50% visibility or above.
+A rendered dip below 50%, leaving/covering the route, backgrounding the app,
+disposing the card, or reusing the element for another deal cancels the dwell.
+Returning to visibility requires a new continuous second. Position is the
+zero-based index in the currently displayed list, including search results
+and the filtered home list.
+
+The existing session-wide `AnalyticsService` owns the set of impressed deal
+IDs. The first qualifying instance wins across `home_feed`, `flash_rail`, and
+`search`, even when two copies qualify together. The debug history receives
+one `deal_impression` with `deal_id`, `source`, and `position`; revisiting a
+screen or retrying delivery does not add another impression. A fresh app
+session creates a fresh set.
+
+All analytics events, including the pre-existing screen/detail events, now use
+the same delivery queue. `FakeApiService.sendAnalyticsBatch` receives batches
+of up to 10, triggered by 10 queued events or 15 seconds from the first unsent
+event. Later arrivals do not postpone that deadline. Requests are serialized;
+new events stay queued while a request is in flight and are checked against
+their original deadline when it finishes. Failure restores the original batch
+ahead of newer events and retries after five seconds without re-recording it
+in debug history. A backend acknowledgement/idempotency contract would be
+needed for exactly-once network delivery after ambiguous transport failures;
+the app guarantees once-per-session impression recording, not that stronger
+server-side property. The queue is in memory and is not persisted across
+process termination.
+
+Visibility callbacks run at the end of each changed frame (`updateInterval =
+Duration.zero`) so brief rendered dips below half a card are not hidden by the
+package's default 500 ms coalescing interval. Callbacks manage timers rather
+than rebuilding cards. After recording, that detector's callbacks are disabled;
+the child widget retains its identity during this one wrapper update.
+
+Rejected alternatives:
+
+- Tracking in a card's `build`: build does not establish that it was visible,
+  and would count rebuilds rather than a continuous viewing interval.
+- A deduplication flag on each widget: it is lost on disposal and cannot dedupe
+  the same deal across home, rail, and search.
+- Resetting the 15-second timer on every arrival: steady traffic below the
+  size threshold could postpone delivery indefinitely.
+- Relying on geometry alone: covered routes and background time are not valid
+  viewing time, so route/lifecycle callbacks cancel the dwell explicitly.
+
+### Verification and limits
+
+On 2026-09-28, all **33 tests** passed, including 14 new F-2 tests. These use real
+clipping geometry for the 49%/50% boundary, a 16 ms interruption, route changes,
+backgrounding, disposal, element reuse, and concurrent copies. Queue tests
+cover the two flush triggers, in-flight arrivals, ordering, retries and shutdown.
+The 120-visible-card test records 120 impressions, sends 12 batches of 10,
+leaves child build counts at 120, and confirms that completed detectors stop
+requesting visibility callbacks. Targeted static analysis passed.
+
+The iPhone simulator's actual **Analytics debug** screen was inspected and
+showed deal 1 at `flash_rail` position 0, deal 5 at `flash_rail` position 1, and
+deal 2 at `home_feed` position 1. Deal 1 was not counted again in the home feed.
+Runtime logs showed the first event at 23:15:33 and
+`POST /analytics/batch events=4` at 23:15:48, including the existing screen event.
+
+Route overlays conservatively interrupt dwell even when only part of a card
+is covered. As documented by the visibility package, arbitrary sibling
+occlusion and opacity are not pixel-perfect visibility measurements. The app's
+normal clipped vertical/horizontal lists, route changes, and lifecycle are
+handled. No real-device frame-time comparison has been performed; the rebuild
+test is not an FPS claim, and the independent RES-105 work remains outstanding.
+
 ## AI usage log for this work
 
-Codex inspected the repository, implemented F-1, wrote and ran tests, checked
+Codex inspected the repository, implemented F-1 and F-2, wrote and ran tests, checked
 static analysis, and documented the limits of the evidence. The user worked
 through earlier tickets interactively; this document does not invent timings
 or test outcomes for those earlier changes.
@@ -139,7 +212,9 @@ display label and the today filter. Verify conversion preserves the instant.
 
 F-1 assisted implementation and verification took approximately 15 minutes on
 2026-09-28. Earlier user work was not timed here.
+F-2 implementation and verification took approximately 10 minutes on the same
+date, including the simulator/debug-screen check.
 
 With another day: capture real-device DevTools evidence, address RES-105's
 independent scroll/image issues, and exercise lifecycle/background scenarios
-on physical Android and iOS devices. F-2 and F-3 are not implemented here.
+on physical Android and iOS devices. F-3 is not implemented here.

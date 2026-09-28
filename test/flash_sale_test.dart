@@ -227,7 +227,7 @@ void main() {
     final controller = DealDetailsController(
       dealRepo: DealRepo(api: FakeApiService()),
       cartService: cart,
-      analytics: AnalyticsService(),
+      analytics: AnalyticsService(api: FakeApiService()),
     );
     controller.deal.value = dealWithDeadline(1, now);
     controller.addToCart();

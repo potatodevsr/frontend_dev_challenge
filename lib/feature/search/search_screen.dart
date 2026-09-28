@@ -39,7 +39,9 @@ class SearchScreen extends GetView<SearchDealsController> {
         return ListView.builder(
           itemCount: controller.results.length,
           itemBuilder: (context, index) => DealCard(
+            key: ValueKey(controller.results[index].id),
             deal: controller.results[index],
+            position: index,
             source: 'search',
           ),
         );
