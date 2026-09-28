@@ -4,13 +4,55 @@ import 'package:get/get.dart';
 import '../../app_config.dart';
 import '../shared_widget/the_network_image.dart';
 import 'deal_details_controller.dart';
+import '../../model/deal_model.dart';
 
 class DealDetailsScreen extends GetView<DealDetailsController> {
   const DealDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final deal = controller.deal;
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Deal details')),
+          body: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      final deal = controller.deal.value;
+
+      if (deal == null) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Deal details')),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    controller.loadError.value ?? 'Deal unavailable.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: controller.loadDeal,
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      return _buildDetails(context, deal);
+    });
+  }
+
+  Widget _buildDetails(BuildContext context, DealModel deal) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -140,3 +182,4 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
     );
   }
 }
+
