@@ -30,6 +30,8 @@ void main() {
     expect(deal.rating, isNull);
     expect(deal.discountPercent, 67);
     expect(deal.isFlashSale, isFalse);
-    expect(deal.pickupWindow.start.isUtc, isTrue);
+    // RES-106 presents pickup times locally without changing the instant.
+    expect(deal.pickupWindow.start.isUtc, isFalse);
+    expect(deal.pickupWindow.start.toUtc(), DateTime.utc(2026, 1, 1, 10, 30));
   });
 }
