@@ -25,10 +25,11 @@ Future<void> initDependencies() async {
   await Get.putAsync(() => FakeApiService().init(), permanent: true);
   Get.put(AnalyticsService(api: Get.find()), permanent: true);
   final flashClock = Get.put(FlashSaleClock(), permanent: true);
-  Get.put(CartService(clock: flashClock), permanent: true);
+  final orderRepo = Get.put(OrderRepo(api: Get.find()), permanent: true);
+  Get.put(CartService(clock: flashClock, orderRepo: orderRepo),
+      permanent: true);
   Get.lazyPut(() => DealRepo(api: Get.find()), fenix: true);
   Get.lazyPut(() => StoreRepo(api: Get.find()), fenix: true);
-  Get.lazyPut(() => OrderRepo(api: Get.find()), fenix: true);
 }
 
 class RescuApp extends StatelessWidget {

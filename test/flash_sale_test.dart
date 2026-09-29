@@ -12,6 +12,8 @@ import 'package:rescu/service/cart_service.dart';
 import 'package:rescu/service/fake_api_service.dart';
 import 'package:rescu/service/flash_sale_clock.dart';
 
+import 'support/reservation_api.dart';
+
 DealModel dealWithDeadline(int id, DateTime? deadline) => DealModel.fromJson({
       'id': id,
       'name': 'Deal $id',
@@ -33,7 +35,10 @@ void main() {
     now = DateTime.utc(2026, 9, 28, 12);
     Get.testMode = true;
     clock = FlashSaleClock(now: () => now);
-    cart = CartService(clock: clock);
+    cart = CartService(
+        clock: clock,
+        orderRepo:
+            OrderRepo(api: ReservationApi(now: () => now, autoReserve: true)));
   });
 
   tearDown(() {
@@ -174,7 +179,7 @@ void main() {
     await mount(tester);
     expect(cart.add(dealWithDeadline(1, now)), isFalse);
     expect(cart.add(dealWithDeadline(2, null)), isTrue);
-    now = now.add(const Duration(days: 1));
+    now = now.add(const Duration(minutes: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(cart.items.single.deal.id, 2);
     await finish(tester);

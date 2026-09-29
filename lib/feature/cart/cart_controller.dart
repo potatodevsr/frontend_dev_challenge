@@ -11,16 +11,15 @@ class CartController extends GetxController {
 
   CartController({required this.cartService, required this.orderRepo});
 
-  final isCheckingOut = false.obs;
+  RxBool get isCheckingOut => cartService.isCheckingOut;
 
   Future<void> checkout() async {
-    if (cartService.items.isEmpty || isCheckingOut.value) return;
-    // Let the user review the changed bag before submitting another order.
-    if (cartService.removeExpiredDeals()) return;
-    isCheckingOut.value = true;
+    final submitted = cartService.beginCheckout();
+    if (submitted == null) return;
+    var clearSubmitted = false;
     try {
-      final order = await orderRepo.checkout(cartService.items.toList());
-      cartService.clear();
+      final order = await orderRepo.checkout(submitted);
+      clearSubmitted = true;
       Get.snackbar(
         'Order confirmed',
         'Order #${order.id} — pick up soon!',
@@ -28,12 +27,26 @@ class CartController extends GetxController {
       );
     } on ApiException catch (e) {
       LogService.error('checkout failed', e);
-      Get.snackbar(
-        'Checkout failed',
-        e.message,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      if (e.statusCode == 410) {
+        // The API does not identify which hold was rejected. Invalidate the
+        // entire submitted set rather than retrying an unknown reservation.
+        clearSubmitted = true;
+        Get.snackbar(
+          'Your hold ended',
+          'Your order was not placed. Please add the items again to check availability.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        Get.snackbar('Checkout failed', e.message,
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (error) {
+      LogService.error('checkout failed', error);
+      Get.snackbar('Could not confirm your order',
+          'Please check your orders before trying again.',
+          snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      cartService.finishCheckout(clearSubmitted: clearSubmitted);
     }
-    isCheckingOut.value = false;
   }
 }
