@@ -23,23 +23,33 @@ class TheNetworkImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
-      child: CachedNetworkImage(
-        imageUrl: url,
-        width: width,
-        height: height,
-        fit: fit,
-        placeholder: (context, _) => Shimmer.fromColors(
-          baseColor: Colors.grey.shade300,
-          highlightColor: Colors.grey.shade100,
-          child: Container(width: width, height: height, color: Colors.white),
-        ),
-        errorWidget: (context, _, __) => Container(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final displayWidth = width != null && width!.isFinite
+            ? constraints.constrainWidth(width!)
+            : constraints.maxWidth;
+        final decodeWidth = displayWidth.isFinite && displayWidth > 0
+            ? (displayWidth * MediaQuery.devicePixelRatioOf(context)).ceil()
+            : null;
+        return CachedNetworkImage(
+          // Resize at decode time; keep the original aspect ratio and disk asset.
+          memCacheWidth: decodeWidth,
+          imageUrl: url,
           width: width,
           height: height,
-          color: Colors.grey.shade200,
-          child: const Icon(Icons.image_not_supported_outlined),
-        ),
-      ),
+          fit: fit,
+          placeholder: (context, _) => Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Container(width: width, height: height, color: Colors.white),
+          ),
+          errorWidget: (context, _, __) => Container(
+            width: width,
+            height: height,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.image_not_supported_outlined),
+          ),
+        );
+      }),
     );
   }
 }
